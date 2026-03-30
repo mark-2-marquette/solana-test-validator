@@ -1,0 +1,47 @@
+# Build Agave v3.1.9 from source — includes solana-test-validator
+# Adapted from solana-boot/playbooks/roles/solana_validator_bootstrap/tasks/build_agave.yaml
+
+# ---------- Stage 1: Build ----------
+FROM rust:1.85-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libudev-dev \
+    libclang-dev \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /agave
+
+# Copy source (context is the agave repo checkout)
+COPY . .
+
+# Build all binaries — same script solana-boot uses
+# cargo-install-all.sh installs to the given prefix
+RUN ./scripts/cargo-install-all.sh /solana-release
+
+# ---------- Stage 2: Runtime ----------
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    libssl3 \
+    libudev1 \
+    socat \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /solana-release/bin/ /usr/local/bin/
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Ledger data
+VOLUME /ledger
+
+# JSON RPC / WebSocket
+EXPOSE 8899 8900
+
+# io_uring needs seccomp=unconfined at runtime
+ENTRYPOINT ["entrypoint.sh"]
