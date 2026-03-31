@@ -24,7 +24,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/laconicnetwork/solana-test-validator
+          images: ghcr.io/mark-2-marquette/solana-test-validator
           tags: |
             type=sha
             type=raw,value=latest
